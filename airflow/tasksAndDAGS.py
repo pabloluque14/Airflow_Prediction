@@ -14,11 +14,9 @@ import requests
 
 import functions
 
-# Inluir biliotecas PIP
 
 
-
-#Default arguments
+# Default arguments
 default_args = {
     'owner': 'Pablo Luque Moreno',
     'depends_on_past': False,
@@ -48,7 +46,7 @@ default_args = {
 
 base_dir='tmp/workflow'
 
-#Inicialización del grafo DAG de tareas para el flujo de trabajo
+##### TASKS ####
 
 # DAG initialization
 dag = DAG(
@@ -70,7 +68,6 @@ PrepareWorkdir = BashOperator(
 # Download humidity data
 takeDataA = BashOperator(
     task_id='takeDataA',
-    depends_on_past=False,
     bash_command='curl -o /tmp/workflow/humidity.csv.zip https://raw.githubusercontent.com/manuparra/MaterialCC2020/master/humidity.csv.zip',
     dag=dag
 )
@@ -78,13 +75,12 @@ takeDataA = BashOperator(
 # Download temperature data
 takeDataB = BashOperator(
     task_id='takeDataB',
-    depends_on_past=False,
     bash_command='curl -o /tmp/workflow/temperature.csv.zip https://raw.githubusercontent.com/manuparra/MaterialCC2020/master/temperature.csv.zip',
     dag=dag
 )
 
 
-# Unzip dat files
+# Unzip dat file humidity
 unzipDataA = BashOperator(
     task_id='unzip_humidity_data',
     depends_on_past=True,
@@ -92,7 +88,7 @@ unzipDataA = BashOperator(
     dag=dag,
 )
 
-
+# Unzip dat file temperature
 unzipDataB = BashOperator(
     task_id='unzip_temperature_data',
     depends_on_past=True,
@@ -114,5 +110,59 @@ MergeData = PythonOperator(
 )
 
 
+# Download MongoDB image
+DonwloadMongo = BashOperator(
+    task_id='descargar_imagen_Mongo',
+    bash_command="docker pull mongo:latest",
+    dag=dag,
+)
+
+# Run MongoDB container: option -d (detached mode)
+RunMongo = BashOperator(
+    task_id='crear_contenedor_Mongo',
+    depends_on_past=True,
+    bash_command="docker run --name mongoDBAirflow -d -p 28900:27017 mongo:latest",
+    dag=dag,
+)
+
+
+#Import the data file to mongoDB : You should have installed mongo tools 
+"""
+options : 
+    --drop (drop db if already exist)
+    --headerline (if the csv file has a first line to put the columns names)
+"""
+"""
+ImportDataToMongoDB = BashOperator(
+    task_id='import_data_to_mongoDB',
+    depends_on_past=True,
+    bash_command="docker exec mongoDBAirflow mongoimport --db sanFrancisco --collection TimePrediction --file /tmp/workflow/data.csv --type csv --drop --port 28900 --headerline --host localhost",
+    dag=dag,
+)
+"""
+"""
+# Export the data file from mongoDB
+ExportarDatosBD = BashOperator(
+    task_id='export_data_to_mongoDB',
+    depends_on_past=True,
+    bash_command="docker exec mongoDBAirflow mongoexport --db sanFrancisco --collection TimePrediction --out /tmp/workflow/mongo_dataset.csv --forceTableScan  --port 28900 --host localhost --type csv -f DATE,HUM,TEMP",
+    dag=dag,
+)
+"""
+
+
+ImportDataToMongoDB = PythonOperator(
+    task_id='import_data_to_mongoDB',
+    provide_context=True,
+    python_callable=functions.importData,
+    op_kwargs={
+        'data': '/tmp/workflow/data.csv',
+    },
+    dag=dag,
+)
+
 PrepareWorkdir >> takeDataA >> unzipDataA >> MergeData
 PrepareWorkdir >> takeDataB >> unzipDataB >> MergeData
+PrepareWorkdir >> DonwloadMongo >> RunMongo
+[MergeData, RunMongo] >> ImportDataToMongoDB
+

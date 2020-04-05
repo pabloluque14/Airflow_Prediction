@@ -6,6 +6,9 @@ Created on Sun Apr  5 00:20:34 2020
 """
 import pandas as pd
 import os.path
+import pymongo
+from pymongo import MongoClient
+
 
 
 def mergeData(**kwargs):
@@ -28,3 +31,32 @@ def mergeData(**kwargs):
     df.columns=['DATE','TEMP', 'HUM']
 
     df.to_csv("/tmp/workflow/data.csv", encoding='utf8', index=False, sep=";")
+
+
+def importData(**kwargs):
+    
+    client = MongoClient('localhost', 28900)
+    # database
+    db = client["timePrediction"]
+    # collection
+    company= db["sanFrancisco"]
+
+    # dont forget to use the right separation -> ;
+    df = pd.read_csv("/tmp/workflow/data.csv", sep=';')
+    data_dict = df.to_dict("records")
+    company.insert_one({"index":"SanFrancisco","data":data_dict})
+
+
+
+def exportData(**kwargs):
+
+    client = MongoClient('localhost', 28900)
+    # database
+    db = client["timePrediction"]
+    # collection
+    company= db["sanFrancisco"]
+
+    data_from_db = company.find_one({"index":"SanFrancisco"})
+    df = pd.DataFrame(data_from_db["data"])
+
+    # TODO: df para la prediccion del modelo
