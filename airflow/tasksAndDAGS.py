@@ -77,5 +77,23 @@ takeDataB = BashOperator(
 )
 
 
+# Unzip dat files
+unzipDataA = BashOperator(
+    task_id='unzip_humidity_data',
+    depends_on_past=True,
+    bash_command='unzip -od /tmp/workflow/ /tmp/workflow/humidity.csv.zip',
+    dag=dag,
+)
 
-PrepareWorkdir >> [takeDataA,takeDataB]
+
+unzipDataB = BashOperator(
+    task_id='unzip_temperature_data',
+    depends_on_past=True,
+    bash_command='unzip -od /tmp/workflow/ /tmp/workflow/temperature.csv.zip',
+    dag=dag,
+)
+
+
+
+PrepareWorkdir >> takeDataA >> unzipDataA
+PrepareWorkdir >> takeDataB >> unzipDataB
