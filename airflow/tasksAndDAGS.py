@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
+"""
+Created on Sun Apr  5 00:20:34 2020
+
+@author: pabloluque
+"""
 
 from datetime import timedelta
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
-#from airflow.operators.python_operator import PythonOperator
+from airflow.operators.python_operator import PythonOperator
 from airflow.utils.dates import days_ago
 import requests
+
+import functions
 
 # Inluir biliotecas PIP
 
@@ -94,6 +101,18 @@ unzipDataB = BashOperator(
 )
 
 
+# Merge temperature and humidity datasets and create data file
+MergeData = PythonOperator(
+    task_id='merge_data',
+    provide_context=True,
+    python_callable=functions.mergeData,
+    op_kwargs={
+        'temp_file': '/tmp/workflow/temperature.csv',
+        'hum_file': '/tmp/workflow/humidity.csv',
+    },
+    dag=dag,
+)
 
-PrepareWorkdir >> takeDataA >> unzipDataA
-PrepareWorkdir >> takeDataB >> unzipDataB
+
+PrepareWorkdir >> takeDataA >> unzipDataA >> MergeData
+PrepareWorkdir >> takeDataB >> unzipDataB >> MergeData
