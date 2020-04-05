@@ -44,13 +44,11 @@ default_args = {
 
 
 
-base_dir='tmp/workflow'
-
 ##### TASKS ####
 
 # DAG initialization
 dag = DAG(
-    'predictions_service',
+    'forecasting',
     default_args=default_args,
     description="Puesta en marcha de un servicio de predicción de humedad y temperatura",
     schedule_interval=None,
@@ -112,14 +110,14 @@ MergeData = PythonOperator(
 
 # Download MongoDB image
 DonwloadMongo = BashOperator(
-    task_id='descargar_imagen_Mongo',
+    task_id='download_mongo_container',
     bash_command="docker pull mongo:latest",
     dag=dag,
 )
 
 # Run MongoDB container: option -d (detached mode)
 RunMongo = BashOperator(
-    task_id='crear_contenedor_Mongo',
+    task_id='create_mongo_container',
     depends_on_past=True,
     bash_command="docker run --name mongoDBAirflow -d -p 28900:27017 mongo:latest",
     dag=dag,
@@ -150,7 +148,7 @@ ExportarDatosBD = BashOperator(
 )
 """
 
-
+# Import data to mongoDB container 
 ImportDataToMongoDB = PythonOperator(
     task_id='import_data_to_mongoDB',
     provide_context=True,
@@ -161,8 +159,35 @@ ImportDataToMongoDB = PythonOperator(
     dag=dag,
 )
 
+# Train model with temperature data
+trainArimaTemp = PythonOperator(
+    task_id='train_arima_model_temperature',
+    provide_context=True,
+    python_callable=functions.trainArimaTEMP,
+    op_kwargs={
+        'data': '/tmp/workflow/arimaTemp.pkl',
+    },
+    dag=dag,
+)
+
+# Train model with humidity data
+trainArimaHum = PythonOperator(
+    task_id='train_arima_model_humidity',
+    provide_context=True,
+    python_callable=functions.trainArimaHUM,
+    op_kwargs={
+        'data': '/tmp/workflow/arimaHum.pkl',
+    },
+    dag=dag,
+)
+
+
 PrepareWorkdir >> takeDataA >> unzipDataA >> MergeData
 PrepareWorkdir >> takeDataB >> unzipDataB >> MergeData
 PrepareWorkdir >> DonwloadMongo >> RunMongo
 [MergeData, RunMongo] >> ImportDataToMongoDB
+
+ImportDataToMongoDB >> trainArimaTemp
+ImportDataToMongoDB >> trainArimaHum
+
 
