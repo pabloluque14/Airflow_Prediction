@@ -10,8 +10,8 @@ WORKDIR /
 COPY requirements.txt ./
 
 # copy forecast models
-COPY arimaTemp.pkl ./
-COPY arimaHum.pkl ./
+COPY /tmp/workflow/arimaTemp.pkl ./
+COPY /tmp/workflow/arimaHum.pkl ./
 
 # copy microservice file
 COPY microservice_v1.py ./
