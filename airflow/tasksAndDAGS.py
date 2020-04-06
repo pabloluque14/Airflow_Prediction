@@ -58,7 +58,7 @@ dag = DAG(
 # Prepare work directory
 PrepareWorkdir = BashOperator(
     task_id='prepare_workdir',
-    bash_command= 'mkdir -p /tmp/workflow/',
+    bash_command= 'mkdir -p /tmp/workflow/ && mkdir -p /tmp/workflow/v1 && mkdir -p /tmp/workflow/v2 ',
     dag=dag,
 )
 
@@ -178,6 +178,37 @@ trainArimaHum = PythonOperator(
     op_kwargs={
         'data': '/tmp/workflow/arimaHum.pkl',
     },
+    dag=dag,
+)
+
+
+downloadMicroserviceV1 = BashOperator(
+    task_id='download_microservice_v1',
+    bash_command=f'''curl -o /tmp/workflow/v1/Dockerfile https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v1/Dockerfile;
+                    curl -o /tmp/workflow/v1/requirements.txt https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v1/requirements.txt;
+                    curl -o /tmp/workflow/v1/microservice_v1.py https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v1/microservice_v1.py;
+                    curl -o /tmp/workflow/v1/test.py https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v1/test.py;''',
+    dag=dag,
+)
+
+
+runV1Test = BashOperator(
+    task_id='run_v1_test',
+    depends_on_past= True,
+    bash_command='python3 /tmp/workflow/v1/test.py',
+    dag=dag,
+)
+
+createV1Image = BashOperator(
+    task_id='create_v1_image',
+    bash_command='docker build /tmp/workflow/v1 -t microservice_v1',
+    dag=dag,
+)
+
+
+deployMicroserviceV1 = BashOperator(
+    task_id='deploy_microservice_v1',
+    bash_command='docker run --detach -p 80:5000 microservice_v1',
     dag=dag,
 )
 

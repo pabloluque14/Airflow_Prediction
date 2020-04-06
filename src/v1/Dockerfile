@@ -1,7 +1,7 @@
 FROM python:3.7
 
 # author info
-LABEL maintainer="Francisco Solano <fransol0728@correo.ugr.es>"
+LABEL maintainer="Pablo Luque <pabloluque13@gmail.com>"
 
 # Working directory 
 WORKDIR /
