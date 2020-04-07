@@ -205,7 +205,7 @@ trainSmoothHum = PythonOperator(
     dag=dag,
 )
 
-
+# download from github resources for model version 1
 downloadMicroserviceV1 = BashOperator(
     task_id='download_microservice_v1',
     bash_command=f'''curl -o /tmp/workflow/v1/Dockerfile https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v1/Dockerfile;
@@ -215,29 +215,63 @@ downloadMicroserviceV1 = BashOperator(
     dag=dag,
 )
 
+# download from github resources for model version 2
+downloadMicroserviceV2 = BashOperator(
+    task_id='download_microservice_v2',
+    bash_command=f'''curl -o /tmp/workflow/v2/Dockerfile https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v2/Dockerfile;
+                    curl -o /tmp/workflow/v2/requirements.txt https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v2/requirements.txt;
+                    curl -o /tmp/workflow/v2/microservice_v2.py https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v2/microservice_v2.py;
+                    curl -o /tmp/workflow/v2/test.py https://raw.githubusercontent.com/pabloluque14/Airflow_Prediction/master/src/v2/test.py;''',
+    dag=dag,
+)
 
+# run unit test for api version 1
 runV1Test = BashOperator(
     task_id='run_v1_test',
     depends_on_past= True,
     bash_command='python3 /tmp/workflow/v1/test.py',
     dag=dag,
 )
-
-"""
+# run unit test for api version 2
+runV2Test = BashOperator(
+    task_id='run_v2_test',
+    depends_on_past= True,
+    bash_command='python3 /tmp/workflow/v2/test.py',
+    dag=dag,
+)
+# create docker image for microservice version 1
 createV1Image = BashOperator(
     task_id='create_v1_image',
+    depends_on_past= True,
     bash_command='docker build /tmp/workflow/v1 -t microservice_v1',
     dag=dag,
 )
 
-
+# deploy microservice container version 1
 deployMicroserviceV1 = BashOperator(
     task_id='deploy_microservice_v1',
+    depends_on_past= True,
     bash_command='docker run --detach -p 80:5000 microservice_v1',
     dag=dag,
 )
 
-"""
+# create docker image for microservice version 2 
+createV2Image = BashOperator(
+    task_id='create_v2_image',
+    depends_on_past= True,
+    bash_command='docker build /tmp/workflow/v2 -t microservice_v2',
+    dag=dag,
+)
+
+# deploy microservice container version 2
+deployMicroserviceV2 = BashOperator(
+    task_id='deploy_microservice_v2',
+    depends_on_past= True,
+    bash_command='docker run --detach -p 81:5000 microservice_v2',
+    dag=dag,
+)
+
+
 PrepareWorkdir >> takeDataA >> unzipDataA >> MergeData
 PrepareWorkdir >> takeDataB >> unzipDataB >> MergeData
 PrepareWorkdir >> DonwloadMongo >> RunMongo
@@ -247,3 +281,7 @@ ImportDataToMongoDB >> trainArimaTemp >> trainArimaHum
 ImportDataToMongoDB >> trainSmoothTemp >> trainSmoothHum
 
 [trainArimaHum,trainSmoothHum] >> downloadMicroserviceV1 >> runV1Test
+[trainArimaHum,trainSmoothHum] >> downloadMicroserviceV2 >> runV2Test
+
+runV1Test >> createV1Image >> deployMicroserviceV1
+runV2Test >> createV2Image >> deployMicroserviceV2
