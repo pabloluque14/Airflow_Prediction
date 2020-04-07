@@ -18,11 +18,11 @@ import pickle
 app = Flask(__name__)
 
 
-@app.route('/servicio/v1/<int:n>horas/', methods=['GET'])
+@app.route('/servicio/v2/<int:n>horas/', methods=['GET'])
 def getForecastingV1(n):
     
-    # localhost path: /tmp/workflow/v1/ docker path: ./
-    result = completeModel(n, './arimaHum.pkl', './arimaTemp.pkl')
+    # localhost path: /tmp/workflow/v2/ docker path: ./
+    result = completeModel(n, './smoothHum.pkl', './smoothTemp.pkl')
     return Response(json.dumps(result), status=200, mimetype="application/json")
 
 
@@ -59,7 +59,7 @@ def getModel(path):
 
 def forecast(model, n):
     # Forecast
-    fc, confint = model.predict(n_periods=n, return_conf_int=True)
+    fc = model.predict(24, 23+n)
     # fc contains the forecasting for the next 24 hours.
     return fc
 

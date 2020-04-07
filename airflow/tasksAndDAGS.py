@@ -165,7 +165,7 @@ trainArimaTemp = PythonOperator(
     provide_context=True,
     python_callable=functions.trainArimaTEMP,
     op_kwargs={
-        'data': '/tmp/workflow/arimaTemp.pkl',
+        'data': '/tmp/workflow/v1/arimaTemp.pkl',
     },
     dag=dag,
 )
@@ -176,7 +176,31 @@ trainArimaHum = PythonOperator(
     provide_context=True,
     python_callable=functions.trainArimaHUM,
     op_kwargs={
-        'data': '/tmp/workflow/arimaHum.pkl',
+        'data': '/tmp/workflow/v1/arimaHum.pkl',
+    },
+    dag=dag,
+)
+
+
+
+# Train model with temperature data
+trainSmoothTemp = PythonOperator(
+    task_id='train_smooth_model_temperature',
+    provide_context=True,
+    python_callable=functions.trainSmoothTEMP,
+    op_kwargs={
+        'data': '/tmp/workflow/v2/smoothTemp.pkl',
+    },
+    dag=dag,
+)
+
+# Train model with humidity data
+trainSmoothHum = PythonOperator(
+    task_id='train_smooth_model_humidity',
+    provide_context=True,
+    python_callable=functions.trainSmoothHUM,
+    op_kwargs={
+        'data': '/tmp/workflow/v2/smoothHum.pkl',
     },
     dag=dag,
 )
@@ -199,6 +223,7 @@ runV1Test = BashOperator(
     dag=dag,
 )
 
+"""
 createV1Image = BashOperator(
     task_id='create_v1_image',
     bash_command='docker build /tmp/workflow/v1 -t microservice_v1',
@@ -212,13 +237,13 @@ deployMicroserviceV1 = BashOperator(
     dag=dag,
 )
 
-
+"""
 PrepareWorkdir >> takeDataA >> unzipDataA >> MergeData
 PrepareWorkdir >> takeDataB >> unzipDataB >> MergeData
 PrepareWorkdir >> DonwloadMongo >> RunMongo
 [MergeData, RunMongo] >> ImportDataToMongoDB
 
-ImportDataToMongoDB >> trainArimaTemp
-ImportDataToMongoDB >> trainArimaHum
+ImportDataToMongoDB >> trainArimaTemp >> trainArimaHum
+ImportDataToMongoDB >> trainSmoothTemp >> trainSmoothHum
 
-
+[trainArimaHum,trainSmoothHum] >> downloadMicroserviceV1 >> runV1Test

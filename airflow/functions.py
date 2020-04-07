@@ -10,6 +10,7 @@ import pymongo
 from pymongo import MongoClient
 import pmdarima as pm
 from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.holtwinters import SimpleExpSmoothing
 import pickle
 
 
@@ -76,7 +77,7 @@ def trainArimaTEMP(**kwargs):
     # delete NaN values for the model
     df = df.dropna()
 
-    model = pm.auto_arima(df.TEMP, start_p=1, start_q=1,
+    model = pm.auto_arima(df['TEMP'], start_p=1, start_q=1,
                         test='adf',       # use adftest to find optimal 'd'
                         max_p=3, max_q=3, # maximum p and q
                         m=1,              # frequency of series
@@ -103,7 +104,7 @@ def trainArimaHUM(**kwargs):
     # delete NaN values for the model
     df = df.dropna()
 
-    model = pm.auto_arima(df.HUM, start_p=1, start_q=1,
+    model = pm.auto_arima(df['HUM'], start_p=1, start_q=1,
                         test='adf',       # use adftest to find optimal 'd'
                         max_p=3, max_q=3, # maximum p and q
                         m=1,              # frequency of series
@@ -120,6 +121,38 @@ def trainArimaHUM(**kwargs):
     # Forecast
     #n_periods = 24 # One day
     #fc, confint = model.predict(n_periods=n_periods, return_conf_int=True)
+
+    with open(kwargs['data'], 'wb') as file:
+        pickle.dump(model, file)
+
+
+def trainSmoothHUM(**kwargs):
+
+    if os.path.isfile(kwargs['data']):
+        return
+
+    df=exportData()
+
+    # delete NaN values for the model
+    df = df.dropna()
+
+    model = SimpleExpSmoothing(df['HUM']).fit()
+
+    with open(kwargs['data'], 'wb') as file:
+        pickle.dump(model, file)
+
+
+def trainSmoothTEMP(**kwargs):
+
+    if os.path.isfile(kwargs['data']):
+        return
+
+    df=exportData()
+
+    # delete NaN values for the model
+    df = df.dropna()
+
+    model = SimpleExpSmoothing(df['TEMP']).fit()
 
     with open(kwargs['data'], 'wb') as file:
         pickle.dump(model, file)

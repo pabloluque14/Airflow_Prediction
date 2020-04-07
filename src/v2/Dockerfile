@@ -10,14 +10,14 @@ WORKDIR /
 COPY requirements.txt ./
 
 # copy forecast models
-COPY arimaTemp.pkl ./
-COPY arimaHum.pkl ./
+COPY smoothTemp.pkl ./
+COPY smoothHum.pkl ./
 
 # copy microservice file
-COPY microservice_v1.py ./
+COPY microservice_v2.py ./
 
 # install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # up the service
-CMD gunicorn --bind 0.0.0.0:5000 microservice_v1:app
+CMD gunicorn --bind 0.0.0.0:5000 microservice_v2:app
