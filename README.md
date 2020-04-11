@@ -1,2 +1,12 @@
 # Airflow_Prediction
-Preidction in base data temperature with Python and Apache Airflow
+Forecaste based on temperature and humidity data with Python and Apache Airflow
+
+
+## Microservices
+
+
+
+
+
+
+Author: Pablo Luque Moreno, University of Granada, Spain
